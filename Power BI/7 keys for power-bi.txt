@@ -1,0 +1,38 @@
+Brigham Young in Nauvoo
+"A key that will never rust...follow the majority of the 12 and you will never be lead astray."
+
+7 Keys for Power-BI
+
+1. Brevity is the soul of wit
+Very few visuals on each slide
+
+2. No/very little text
+Picture is worth more than words. I want people paying attention to what I'm saying.
+
+3. Titles
+	A) A summary is the worst kind of title
+	a summary title describing the slide is horrible. Never use these.
+All Insights need to be backed by data
+	B) Insight Titles are good
+	An insight is something you are trying to convey from the data
+	C) Actionable Insight are GREAT, but not always possible
+	Examples: Increase sales by 10%, Increase retention by 20%, Lower distribution costs
+
+4. *Context*
+
+Full picture of the data is important. 
+We need all the data to form an insight and opinion, not just pick and choose which data we want to use.
+
+5. Problem Statement
+Always need to keep the presentation and focus on our Problem Statement. 
+The Problem Statement is the START of our story. 
+We must have a beginning and share the SOLUTION or END of the story.
+
+6. Presentation Pyramid
+	a) Always Lead with our conclusion
+	b) Main
+	c) Backup slides
+
+7. Marinate
+	If its on the slide, you should have a mastery of the information.
+	If you don't know something about a question, "I don't know, let me follow up in an email after this..."
