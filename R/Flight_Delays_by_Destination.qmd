@@ -1,0 +1,106 @@
+---
+title: "Exploring Flight Delays by Destination"
+author: "Kevin Murray"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+execute:
+  keep-md: true
+  warning: false
+format:
+  html:
+    code-fold: true
+    code-tools: true
+---
+
+```{r, message=FALSE, warning=FALSE, code_folding='toggle'}
+library(nycflights13)
+suppressPackageStartupMessages({
+  library(tidyverse)
+})
+library(mosaic)
+library(pander)
+library(DT)
+```
+The below table is data with minimal cleaning or tidying having been performed*
+```{r, message=FALSE, warning=FALSE, code_folding='hide'}
+delay_by_dest <- flights %>%
+  group_by(dest) %>%
+  summarise(
+    avg_dep_delay = mean(dep_delay, na.rm = TRUE),
+    num_flights = n()
+  ) %>%
+  arrange(desc(avg_dep_delay))
+
+datatable(delay_by_dest, 
+          options=list(
+            lengthMenu = c(5, 10, 20),  # Set the page length options
+            pageLength = 10  # Set the default page length
+          ),
+          extensions="Responsive"
+)
+```
+
+```{r, message=FALSE, warning=FALSE, code_folding='hide'}
+delay_by_dest <- flights %>%
+  group_by(dest) %>%
+  summarise(
+    avg_dep_delay = mean(dep_delay, na.rm = TRUE),
+    num_flights = n()
+  ) %>%
+  arrange(desc(avg_dep_delay))
+
+top_delay_dest <- delay_by_dest %>%
+  top_n(20, avg_dep_delay)
+
+ggplot(top_delay_dest, aes(x = reorder(dest, avg_dep_delay), y = avg_dep_delay)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  geom_text(aes(label = paste(num_flights, "flights")), hjust = -0.2, size = 3, color = "black") +  # Add labels for count of flights
+  coord_flip() +
+  labs(title = "Top 20 Destinations by Average Departure Delay",
+       x = "Destination Airport",
+       y = "Average Departure Delay (minutes)",
+       caption = "Number of flights indicated for each destination") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "lightgray"))
+
+```
+If you take a look at the above chart, you might look at it and think that it is showing extremely high departure delay times, and you'd be right, it is(~20 minutes and ~35 minutes). However, many of the destinations shown are those that have very few flights comparative to the most flown destinations.
+
+```{r, message=FALSE, warning=FALSE, code_folding='hide'}
+delay_by_dest <- flights %>%
+  group_by(dest) %>%
+  summarise(
+    avg_dep_delay = mean(dep_delay, na.rm = TRUE),
+    num_flights = n()
+  ) %>%
+  arrange(desc(avg_dep_delay))
+
+top_delay_dest <- delay_by_dest %>%
+  top_n(20, num_flights)
+
+ggplot(top_delay_dest, aes(x = avg_dep_delay, y = num_flights)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  geom_text(aes(label = paste(num_flights, "flights")), hjust = -0.2, size = 3, color = "black") +  # Add labels for count of flights
+  labs(title = "Top 20 Destinations by Number of Flights",
+       x = "Average Departure Delay (minutes)",
+       y = "Number of Flights",
+       caption = "Number of flights indicated for each destination") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "lightgray"))
+
+```
+
+If we now take a look at this data, it shows that Destinations with very high flight counts actually have a much lower average (~8.5 minutes - ~16 minutes) compared to the destinations with just the highest average departure time.
+
+```{r, message=FALSE, warning=FALSE, code_folding='hide'}
+delay_by_dest %>%
+  ggplot(aes(x = num_flights, y = avg_dep_delay)) +
+  geom_point(aes(size = num_flights), alpha = 0.7, color = "red") +
+  scale_size_continuous(name = "Number of Flights") +
+  labs(title = "Average Departure Delay by Destination Airport",
+       x = "Number of Flights",
+       y = "Average Departure Delay (minutes)") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "lightgray"))
+```
+
+From this chart, we can conclude that Destinations that are traditionally less flown from NYC have a higher likely-hood of having extended delays. If we conducted further analysis of the data with my scrutiny, we might be able to identify some regional similarities for destination airport and see if they with a commonality.

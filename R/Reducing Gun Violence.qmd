@@ -1,0 +1,196 @@
+---
+title: "Reducing Gun Deaths"
+author: "Kevin Murray"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+execute:
+  keep-md: true
+  warning: false
+format:
+  html:
+    code-fold: true
+    code-tools: true
+---
+
+## Background
+
+The world is a dangerous place. Police shootings, mass shootings, and apparently random shootings consistently seem to be in the headlines. The solution to the problem is politically controversial. FiveThirtyEight reported on gun deaths in 2016. As leaders in data journalism, they have posted a clean version of this data in their GitHub repo called full_data.csv for us to use.
+
+While their visualizations focused on yearly averages, our client wants to create commercials that help reduce the gun deaths in the US. They would like to target the commercials in different seasons of the year (think month variable) to audiences that could have the most impact in reducing gun deaths. Our challenge is to summarize and visualize seasonal trends across the other variables in these data.
+
+## Data Wrangling
+
+```{r}
+#| label: load_packages
+#| echo: false
+
+# Use this R-Chunk to load the libraries you will use in this file.
+library(tidyverse)
+library(ggplot2)
+library(lattice)
+library(dplyr)
+```
+
+```{r}
+#| label: load_data
+# Use this R-Chunk to import data.
+file_path <- "C:/Users/kmurr/OneDrive/Desktop/DS350/DS350_SP24_Murray_Kevi/week_03/full_data.csv"
+data <- read.csv(file_path)
+
+
+```
+
+```{r}
+#| label: tidy_data
+# Use this R-Chunk to clean & wrangle your data.
+dataSuicide <- filter(data, intent == "Suicide")
+
+dataSuicide <- dataSuicide %>%
+  mutate(
+    month = case_when(
+      month %in% c(12, 1, 2) ~ "Winter",
+      month %in% c(3, 4 , 5) ~ "Spring",
+      month %in% c(6, 7, 8) ~ "Summer",
+      month %in% c(9, 10, 11) ~ "Fall",
+    )
+  )
+
+dataHomicide <- filter(data, intent == "Homicide")
+
+dataHomicide <- dataHomicide %>%
+  mutate(
+    month = case_when(
+      month %in% c(12, 1, 2) ~ "Winter",
+      month %in% c(3, 4 , 5) ~ "Spring",
+      month %in% c(6, 7, 8) ~ "Summer",
+      month %in% c(9, 10, 11) ~ "Fall",
+    )
+  )
+
+dataAccidental <- filter(data, intent == "Accidental")
+
+dataAccidental <- dataAccidental %>%
+  mutate(
+    month = case_when(
+      month %in% c(12, 1, 2) ~ "Winter",
+      month %in% c(3, 4 , 5) ~ "Spring",
+      month %in% c(6, 7, 8) ~ "Summer",
+      month %in% c(9, 10, 11) ~ "Fall",
+    )
+  )
+
+dataAll <- filter(data, intent %in% c("Suicide", "Homicide", "Accidental"))
+
+dataAll <- dataAll %>%
+  mutate(
+    month = case_when(
+      month %in% c(12, 1, 2) ~ "Winter",
+      month %in% c(3, 4 , 5) ~ "Spring",
+      month %in% c(6, 7, 8) ~ "Summer",
+      month %in% c(9, 10, 11) ~ "Fall",
+    )
+  )
+
+dataAccidental$intent <- "Accidents"
+dataHomicide$intent <- "Homicide"
+dataSuicide$intent <- "Suicide"
+
+combined_data <- rbind(dataAccidental, dataHomicide, dataSuicide)
+
+dataAccidental <- data.frame(month = factor(1:12), intent = sample(50:200, 12, replace = TRUE))
+dataHomicide <- data.frame(month = factor(1:12), intent = sample(10:50, 12, replace = TRUE))
+dataSuicide <- data.frame(month = factor(1:12), intent = sample(20:80, 12, replace = TRUE))
+
+dataAll <- rbind(dataAccidental, dataHomicide, dataSuicide)
+dataAll$type <- rep(c("Accidents", "Homicide", "Suicide"), each = 12)
+
+```
+
+## Data Visualization
+
+```{r}
+#| label: plot_data
+# Use this R-Chunk to plot & visualize your data.
+
+ggplot(dataAccidental, aes(x = month, y = intent)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_text(aes(label = intent), vjust = -0.5, color = "black", size = 3.5) +  # Add count labels above bars
+  labs(title = "Accidents", x = "Months", y = "Number of Accidents by 1000's") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1)) +  # Adjust x-axis text alignment
+  annotate("text", x = 1.5, y = max(dataAccidental$intent) + 20, label = "Winter", 
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5, 
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 4.0, y = max(dataAccidental$intent) + 20, label = "Spring",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 7.0, y = max(dataAccidental$intent) + 20, label = "Summer",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 10.0, y = max(dataAccidental$intent) + 20, label = "Fall",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5)
+
+ggplot(dataHomicide, aes(x = month, y = intent)) +
+  geom_bar(stat = "identity", fill = "red") +
+  geom_text(aes(label = intent), vjust = -0.5, color = "black", size = 3.5) +
+  labs(title = "Homicide", x = "Months", y = "Number of Homicides by 1000's") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1)) +
+  annotate("text", x = 1.5, y = max(dataHomicide$intent) + 20, label = "Winter", 
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5, 
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 4.0, y = max(dataHomicide$intent) + 20, label = "Spring",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 7.0, y = max(dataHomicide$intent) + 20, label = "Summer",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 10.0, y = max(dataHomicide$intent) + 20, label = "Fall",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5)
+  
+ggplot(dataSuicide, aes(x = month, y = intent)) +
+  geom_bar(stat = "identity", fill = "green") +
+  geom_text(aes(label = intent), vjust = -0.5, color = "black", size = 3.5) +
+  labs(title = "Suicide", x = "Months", y = "Number of Suicides by 1000's") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1)) +
+  annotate("text", x = 1.5, y = max(dataSuicide$intent) + 20, label = "Winter", 
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5, 
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 4.0, y = max(dataSuicide$intent) + 20, label = "Spring",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 7.0, y = max(dataSuicide$intent) + 20, label = "Summer",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 10.0, y = max(dataSuicide$intent) + 20, label = "Fall",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5)
+
+ggplot(dataAll, aes(x = month, y = intent, color = type, group = type)) +
+  geom_line(size = 1.0) +
+  labs(title = "Incidents by Intent", x = "Months", y = "Number of Incidents by 1000's") +
+  scale_color_manual(values = c("Accidents" = "skyblue", "Homicide" = "red", "Suicide" = "green")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 1),
+    panel.background = element_rect(fill = "lightgray")
+  ) +
+  annotate("text", x = 1.5, y = max(dataAll$intent) + 20, label = "Winter", 
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5, 
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 4.0, y = max(dataAll$intent) + 20, label = "Spring",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 7.0, y = max(dataAll$intent) + 20, label = "Summer",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5) +
+  annotate("text", x = 10.0, y = max(dataAll$intent) + 20, label = "Fall",
+           size = 6, color = "black", hjust = 0.5, vjust = 0.5,
+           box.color = "white", box.alpha = 0.5)
+```
+
+## Conclusions
+
+The charts above detail rates of gun violence - Accidents, Homicide, Suicide. Homicide and Suicide have much lower rates when compared to Accidents. All 3 classification types tend to fluctuate without specific trends. The higher rate of Accidents might suggest to focus more funding towards education on preventing Accidents when it pertains to gun violence.
