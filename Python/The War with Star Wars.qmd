@@ -1,0 +1,363 @@
+---
+title: "The War with Star Wars"
+author: "Kevin Murray"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+    
+---
+
+```{python}
+#| label: libraries
+#| include: false
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn import metrics
+from sklearn.model_selection import train_test_split
+from sklearn import tree
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+```
+
+### Elevator pitch
+
+Analyzing survey data can be like deciphering a galaxy far, 
+far away: filled with diverse formats and messy entries. 
+Using FiveThirtyEight's 2014 Star Wars survey with over 1,000 
+participants, we cleaned, transformed, and validated the dataset 
+against the original article's visuals. Going further, we built a
+machine learning model capable of predicting whether a respondent 
+earns over $50,000 based on their Star Wars preferences. 
+With an accuracy of 55%, our model highlights the fascinating 
+link between pop culture preferences and financial behavior. 
+These findings could inform targeted strategies in recruitment, 
+marketing, and beyond. Join us as we explore how fandom 
+intersects with real-world trends!
+
+
+```{python}
+#| label: project-data
+#| code-summary: Read and format project data
+StarWars = "https://github.com/fivethirtyeight/data/raw/master/star-wars-survey/StarWars.csv"
+
+
+df_cols = pd.read_csv(StarWars, encoding = 'ISO-8859-1', engine='python', nrows = 1).melt()
+df = pd.read_csv(StarWars, encoding = 'ISO-8859-1', skiprows =2, header = None )
+```
+
+### QUESTION|TASK 1
+
+__Shorten the column names and clean them up for easier use with pandas Provide a table or list that exemplifies how you fixed the names.__
+
+
+```{python}
+#| label: Q1.1
+#| code-summary: rename columns
+
+df.columns = ['respondent_id', 'seen_any_of_6', 'is_fan', 'seen_I', 'seen_II', 'seen_III', 'seen_IV', 'seen_V', 'seen_VI', 'rank_I', 'rank_II', 'rank_III', 'rank_IV', 'rank_V', 'rank_VI', 'isgood_hansolo', 'isgood_lukes', 'isgood_pleia', 'isgood_anakins', 'isgood_obiwan', 'isgood_epalpatine', 'isgood_darthvader', 'isgood_lando', 'isgood_bobafett', 'isgood_c3p0', 'isgood_r2d2', 'isgood_jarjar', 'isgood_padme', 'isgood_yoda', 'who_shot_first', 'know_expand_univ', 'fan_expand_univ', 'fan_star_trek', 'gender', 'age', 'house_income', 'education', 'location_region']
+
+df.head(15)
+```
+
+### QUESTION|TASK 2
+
+__Clean and format the data so that it can be used in a machine learning model. As you format the data, you should complete each item listed below. In your final report provide example(s) of the reformatted data with a short description of the changes made.__
+
+a. Filter the dataset to respondents that have seen at least one film
+
+I retained only respondents who had seen at least one film using the condition df['seen_any_of_6'] == 'Yes'
+
+```{python}
+#| label: Q2
+#| code-summary: clean, format data, and update age representation
+
+# 2a Filter the dataset to respondents that have seen at least one film
+df = df[df['seen_any_of_6'] == 'Yes']
+```
+
+b. Create a new column that converts the age ranges to a single number. Drop the age range categorical column
+
+I created a new column age_n that maps age ranges to numerical values (18, 30, 45, 61) and then dropped the original age column.
+
+```{python}
+
+# 2b Create a new column that converts the age ranges to a single number. Drop the age range categorical column
+def categorize_age(age):
+  if age == '18-29':
+    return 18
+  elif age == '30-44':
+    return 30
+  elif age == '45-60':
+    return 45
+  elif age == '> 60':
+    return 61
+
+df['age_n'] = df['age'].apply(categorize_age)
+
+df.drop('age', axis=1, inplace=True)
+```
+
+c. Create a new column that converts the education groupings to a single number. Drop the school categorical column
+
+I transformed education levels into numeric codes (0 for High school, 1 for Some college, 2 for Bachelor’s degree, 
+3 for Graduate degree) and removed the education column.
+
+```{python}
+
+# 2c Create a new column that converts the education groupings to a single number. Drop the school categorical column
+def cat_education(education):
+  if education == 'High school degree':
+    return 0
+  elif education == 'Some college or Associate degree':
+    return 1
+  elif education == 'Bachelor degree':
+    return 2
+  elif education == 'Graduate degree':
+    return 3
+
+df['education_n'] = df['education'].apply(cat_education)
+
+df.drop('education', axis=1, inplace=True)
+```
+
+d. Create a new column that converts the income ranges to a single number. Drop the income range categorical column
+
+Income ranges were converted to numeric values (0 for <$25k, 25000 for $25k-$49k, 50000 for $50k-$99k, 100000 for 
+$100k-$149k, 150000 for ≥$150k) and the house_income column was dropped.
+
+```{python}
+# 2d Create a new column that converts the income ranges to a single number. Drop the income range categorical column
+def cat_income(house_income):
+  if house_income == '$0 - $24,999':
+    return 0
+  elif house_income == '$25,000 - $49,999':
+    return 25000
+  elif house_income == '$50,000 - $99,999':
+    return 50000
+  elif house_income == '$100,000 - $149,999':
+    return 100000
+  elif house_income == '$150,000+':
+    return 150000
+
+df['income_n'] = df['house_income'].apply(cat_income)
+
+df.drop('house_income', axis=1, inplace=True)
+```
+
+e. Create your target (also known as “y” or “label”) column based on the new income range column
+
+Target Column were created with a binary target column y that indicates if the income is $50,000 or more, 
+based on the newly created income_n column.
+
+```{python}
+
+# 2e Create your target (also known as “y” or “label”) column based on the new income range column
+def cat_target(income_n):
+  if income_n >= 50000:
+    return True
+  else:
+    return False
+
+df['y'] = df['income_n'].apply(cat_target)
+```
+
+f. One-hot encode all remaining categorical columns
+
+All remaining categorical columns were one-hot encoded to convert them into binary features suitable for machine learning models.
+```{python}
+# 2f One-hot encode all remaining categorical columns
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+
+columns_to_encode = ['is_fan', 'seen_I', 'seen_II', 'seen_III', 'seen_IV', 'seen_V', 'seen_VI', 'rank_I', 'rank_II', 'rank_III', 'rank_IV', 'rank_V', 'rank_VI', 'isgood_hansolo', 'isgood_lukes', 'isgood_pleia', 'isgood_anakins', 'isgood_obiwan', 'isgood_epalpatine', 'isgood_darthvader', 'isgood_lando', 'isgood_bobafett', 'isgood_c3p0', 'isgood_r2d2', 'isgood_jarjar', 'isgood_padme', 'isgood_yoda', 'who_shot_first', 'know_expand_univ', 'fan_expand_univ', 'fan_star_trek', 'gender', 'location_region']
+
+encoder = OneHotEncoder()
+
+ct = ColumnTransformer([
+    ("encoder", encoder, columns_to_encode)
+], remainder='passthrough', sparse_threshold=0)
+
+encoded_data = ct.fit_transform(df)
+
+new_feature_names = ct.get_feature_names_out()
+
+new_df = pd.DataFrame(encoded_data, columns=new_feature_names, index=df.index)
+```
+
+## Displaying the Reformatted Data:
+
+```{python}
+#| label: Q2-chart
+
+new_df.head(15)
+```
+
+This output shows the first 15 rows of the dataset after cleaning and formatting. It includes the updated columns with numeric values for age, education, and income ranges, as well as one-hot encoded categorical variables.
+
+## Binary Conversion of Categorical Values:
+```{python}
+#| label: Q2-1and0
+
+new_df = new_df.replace({'Yes': 1, 'No': 0, 'True': 1, 'False': 0})
+
+# new_df.head(15)
+```
+
+### QUESTION|TASK 3
+
+__Validate that the data provided on GitHub lines up with the article by recreating 2 of the visuals from the article.__
+
+Recreated the first 2 charts from the article with almost perfectly equal percentages. 
+
+```{python}
+#| label: Q3-chart1
+#| code-summary: chart1
+
+new_df['The Phantom Menace'] = new_df['encoder__seen_I_Star Wars: Episode I  The Phantom Menace']
+new_df['Attack of the Clones'] = new_df['encoder__seen_II_Star Wars: Episode II  Attack of the Clones']
+new_df['Revenge of the Sith'] = new_df['encoder__seen_III_Star Wars: Episode III  Revenge of the Sith']
+new_df['A New Hope'] = new_df['encoder__seen_IV_Star Wars: Episode IV  A New Hope']
+new_df['The Empire Strikes Back'] = new_df['encoder__seen_V_Star Wars: Episode V The Empire Strikes Back']
+new_df['Return of the Jedi'] = new_df['encoder__seen_VI_Star Wars: Episode VI Return of the Jedi']
+
+percentages = {}
+for col in ['Return of the Jedi', 'The Empire Strikes Back', 'A New Hope', 'Revenge of the Sith', 'Attack of the Clones', 'The Phantom Menace']:
+  percentages[col] = round((new_df[col].sum() / 835) * 100)
+
+
+percent_df = pd.DataFrame(list(percentages.items()), columns=['Percentage', 'Column'])
+
+fig = px.bar(percent_df, x='Column', y='Percentage', title="Which 'Star Wars' Movies Have You Seen?<br><sub>Of 835 respondents who have seen any film</sub>", text_auto=True)
+
+fig.update_layout(xaxis_title="%", yaxis_title="")
+
+fig.show()
+```
+
+```{python}
+# Q3 best movie data
+
+seen_columns = ['The Phantom Menace', 'Attack of the Clones', 'Revenge of the Sith', 'A New Hope', 'The Empire Strikes Back', 'Return of the Jedi']
+all_seen = new_df[seen_columns].all(axis=1)
+
+
+new_df['The Phantom Menace '] = new_df['encoder__rank_I_1.0']
+new_df['Attack of the Clones '] = new_df['encoder__rank_II_1.0']
+new_df['Revenge of the Sith '] = new_df['encoder__rank_III_1.0']
+new_df['A New Hope '] = new_df['encoder__rank_IV_1.0']
+new_df['The Empire Strikes Back '] = new_df['encoder__rank_V_1.0']
+new_df['Return of the Jedi '] = new_df['encoder__rank_VI_1.0']
+
+I_columns = ['The Phantom Menace ']
+II_columns = ['Attack of the Clones ']
+III_columns = ['Revenge of the Sith ']
+IV_columns = ['A New Hope ']
+V_columns = ['The Empire Strikes Back ']
+VI_columns = ['Return of the Jedi ']
+
+
+I_percentages = {}
+for col in I_columns:
+    
+    ranked_1 = new_df.loc[all_seen & (new_df[col] == 1)]
+    
+    I_percentages[col.split('_')[-1]] = round((len(ranked_1) / all_seen.sum()) * 100)
+
+II_percentages = {}
+for col in II_columns:
+    ranked_1 = new_df.loc[all_seen & (new_df[col] == 1)]
+    II_percentages[col.split('_')[-1]] = round((len(ranked_1) / all_seen.sum()) * 100)
+
+III_percentages = {}
+for col in III_columns:
+    ranked_1 = new_df.loc[all_seen & (new_df[col] == 1)]
+    III_percentages[col.split('_')[-1]] = round((len(ranked_1) / all_seen.sum()) * 100)
+
+IV_percentages = {}
+for col in IV_columns:
+    ranked_1 = new_df.loc[all_seen & (new_df[col] == 1)]
+    IV_percentages[col.split('_')[-1]] = round((len(ranked_1) / all_seen.sum()) * 100)
+
+V_percentages = {}
+for col in V_columns:
+    ranked_1 = new_df.loc[all_seen & (new_df[col] == 1)]
+    V_percentages[col.split('_')[-1]] = round((len(ranked_1) / all_seen.sum()) * 100)
+
+VI_percentages = {}
+for col in VI_columns:
+    ranked_1 = new_df.loc[all_seen & (new_df[col] == 1)]
+    VI_percentages[col.split('_')[-1]] = round((len(ranked_1) / all_seen.sum()) * 100)
+
+
+b_percentages = {}
+
+b_percentages['Return of the Jedi '] = VI_percentages['Return of the Jedi ']
+b_percentages['The Empire Strikes Back '] = V_percentages['The Empire Strikes Back ']
+b_percentages['A New Hope '] = IV_percentages['A New Hope ']
+b_percentages['Revenge of the Sith '] = III_percentages['Revenge of the Sith ']
+b_percentages['Attack of the Clones '] = II_percentages['Attack of the Clones ']
+b_percentages['The Phantom Menace '] = I_percentages['The Phantom Menace ']
+```
+
+
+```{python}
+# Q3 best movie chart
+
+best_chart_fig = px.bar(y=list(b_percentages.keys()), x=list(b_percentages.values()), 
+             labels={'y': 'Movies', 'x': 'Percentage (%)'}, 
+             title="What's the Best 'Star Wars' Movie?<br><sub>Of 471 respondents who have seen all six films</sub>", text_auto=True)
+
+best_chart_fig.update_layout(xaxis_title="%", yaxis_title="")
+
+best_chart_fig.show()
+```
+
+### QUESTION|TASK 4
+
+__Build a machine learning model that predicts whether a person makes more than $50k. Describe your model and report the accuracy.__
+
+For Task 4, I used a Random Forest Classifier to predict income levels based on the Star Wars survey data. 
+The model achieved an accuracy score of approximately 54.8%. This means that the classifier correctly predicted
+the income level of the survey respondents about 54.8% of the time. While this accuracy is slightly above chance, 
+it suggests that the model has some predictive capability but also leaves room for improvement.
+
+```{python}
+#| label: Q4-random forest 
+#| code-summary: split data, training and test classifier
+
+new_features = new_df.filter(['encoder__is_fan_Yes', 'The Phantom Menace', 'Attack of the Clones', 'Revenge of the Sith', 'A New Hope', 'The Empire Strikes Back', 'Return of the Jedi'])
+
+
+new_targets = new_df['remainder__y']
+
+X_train, X_test, y_train, y_test = train_test_split(new_features, new_targets, test_size=0.3, random_state=42)
+
+rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+
+rf_classifier.fit(X_train, y_train.values.ravel())  
+
+y_pred = rf_classifier.predict(X_test)
+
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy}")
+```

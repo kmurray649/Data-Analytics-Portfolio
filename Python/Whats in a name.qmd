@@ -1,0 +1,215 @@
+---
+title: "What's in a name?"
+author: "Kevin Murray"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+---
+
+```{python}
+#| label: libraries
+#| include: false
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+```
+
+
+## Elevator pitch
+
+This analysis explores the impact of pop culture on baby naming trends in the United States. By examining historical data, we observe significant influences from movies, particularly the "Star Wars" franchise, on the popularity of unique names such as "Anakin." The data reveals that names can experience sharp rises in popularity following the release of culturally significant films. Additionally, traditional names like "Kevin" and "Brittany" show distinct usage patterns over the decades, reflecting broader societal trends and shifts. This insight can be valuable for understanding how media and cultural phenomena shape naming conventions and can help anticipate future trends in name popularity.
+
+```{python}
+#| label: project-data
+#| code-summary: Read and format project data
+
+# Include and execute your code here
+df = pd.read_csv("https://github.com/byuidatascience/data4names/raw/master/data-raw/names_year/names_year.csv")
+```
+
+## Kevin - a brief synapses of an amazing name
+
+How does your name at your birth year compare to its use historically?
+
+Within the data, the name "Kevin" doesn't really pick up traction until around the 1950's and maintained a high popularity for many decades. In the 1990's it faced a slight decline where it dipped below 15,000 and 14,000 for the first time in history and has continued with that decline. My birth year of 1996 was in the middle of this decline and had "12328". 2015 is the lowest amount of "Kevin" since it gained popularity in the 1950's.
+
+```{python}
+kevin_df = df[df['name'] == 'Kevin']
+kevin_df = kevin_df[["year", "Total"]]
+```
+
+Kevin reached max popularity around the end of the Baby Boomer era and is steadily decreased but it still remains a rather common name.
+
+```{python}
+#| label: Q1
+#| code-summary: plot
+#| fig-cap: Popularity of the name "Kevin" over time
+#| fig-align: center
+#| render_inline: true
+
+line_chart = px.line(kevin_df, x='year', y='Total', title="Popularity of the name 'Kevin' over time")
+
+line_chart.add_shape(
+    type="line",
+    x0=1996,
+    y0=0,
+    x1=1996,
+    y1=kevin_df['Total'].max(),
+    line=dict(color="Red", width=2),
+)
+
+line_chart.add_annotation(
+    x=1996,
+    y=kevin_df['Total'].max(),
+    text="Birth Year 1996",
+    showarrow=True,
+    arrowhead=1,
+    ax=0,
+    ay=-40
+)
+
+line_chart
+
+```
+
+## How old is Brittany?
+
+If you talked to someone named Brittany on the phone, what is your guess of his or her age? What ages would you not guess?
+
+My best guess for the name Brittany would be the age 34, but obviously, unless I'm doing some sort of data collection I wouldn't even know how to spell her name and because it has many different spellings it might be difficult to figure out exactly which data to go by.
+
+```{python}
+#| label: Q2
+#| code-summary: filtering the data to just hold Brittany
+
+brittany_df = df[df['name'] == 'Brittany']
+brittany_df = brittany_df[["year", "Total"]]
+
+```
+
+```{python}
+#| label: Q2-chart
+#| code-summary: displaying how old brittanys are in 2024
+#| fig-cap: "Displaying how old Brittanys are in 2024"
+#| fig-align: center
+
+brittany_df['age'] = 2024 - brittany_df['year']
+
+brittany_df['color'] = ['red' if age == 34 else 'blue' for age in brittany_df['age']]
+
+chart = px.bar(brittany_df, x="age", y="Total", title="Brittany Ages in 2024", color='color', color_discrete_map={'red': 'red', 'blue': 'blue'})
+chart.update_layout(showlegend=False)
+
+chart.add_annotation(
+    x=34,
+    y=brittany_df[brittany_df['age'] == 34]['Total'].max(),
+    text="Age 34",
+    showarrow=True,
+    arrowhead=1
+)
+
+
+chart.show()
+```
+
+
+## Bible Names in the 20th Century
+
+Mary, Martha, Peter, and Paul are all Christian names. From 1920 - 2000, compare the name usage of each of the four names. What trends do you notice?
+
+There is heavy usage of all of these names, but particularly for Mary and Paul. They all decreased in popularity around the late 1970's and continue to steadily decline to the year 2000.
+
+```{python}
+#| label: Q3
+#| code-summary: Read and format data
+# Include and execute your code here
+# Filter the DataFrame for the specified names
+bibleNames_df = df[df['name'].isin(['Mary', 'Martha', 'Peter', 'Paul'])]
+
+years_to_exclude = [2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]
+bibleNames_df = bibleNames_df[~bibleNames_df['year'].isin(years_to_exclude)]
+
+bibleNames_df = bibleNames_df[["name", "year", "Total"]]
+```
+
+```{python}
+#| label: Q3-chart
+#| code-summary: Bible Names Time Series Plot
+#| fig-cap: "Bible Names Rise and Fall in Popularity"
+#| fig-align: center
+
+bibleNames_df['color'] = ['Mary' if name == "Mary" else 'Martha' if name == "Martha" else 'Peter' if name == "Peter" else 'Paul' for name in bibleNames_df['name']]
+
+legend_labels = {'blue': 'Mary', 'green': 'Martha', 'yellow': 'Peter', 'orange': 'Paul'}
+
+line_chart = px.line(bibleNames_df, x='year', y='Total', title="Popularity of Bible Names 1920 - 2000", color='color')
+
+line_chart.show()
+
+```
+
+
+## Anakin and Star Wars
+
+Think of a unique name from a famous movie. Plot the usage of that name and see how changes line up with the movie release. Does it look like the movie had an effect on usage?
+
+If we look at the name 'Anakin', we see that the name didn't exist at all until 1998. The Movies definitely got the name going and as fans started having children more kids were born 'Anakin'.
+
+```{python}
+#| label: Q4
+#| code-summary: Anakin formatting
+# Include and execute your code here
+anakin_df = df[df['name'] == 'Anakin']
+anakin_df = anakin_df[["year", "Total"]]
+```
+
+Prior to the year 1998, there were no Anakins being born in the US. Even after its introduction it still remains a very unique name.
+
+```{python}
+#| label: Q4-chart
+#| code-summary: Star wars release year markers and anakin births
+#| fig-cap: "Showing the amount of Anakins born starting from 1998 with the Prequal Star Wars Release dates marked"
+#| fig-align: center
+
+chart = px.bar(anakin_df, x="year", y="Total", title="Anakin Usage Begins with Star Wars")
+
+special_years = [1999, 2002, 2005]
+labels = [
+    "Ep 1: The Phantom Menace",
+    "Ep 2: Attack of the Clones",
+    "Ep 3: Revenge of the Sith"
+]
+
+for year, label in zip(special_years, labels):
+    value = anakin_df.loc[anakin_df['year'] == year, 'Total'].values[0]
+    chart.add_trace(go.Scatter(
+        x=[year],
+        y=[value],
+        mode='markers+text',
+        marker=dict(color='red', size=10),
+        text=[label],
+        textfont=dict(size=13, color='black'),
+        textposition='top right',
+        showlegend=False
+    ))
+
+chart.show()
+```

@@ -1,0 +1,283 @@
+---
+title: "Finding Relationships in Baseball"
+author: "Kevin Murray"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+    
+---
+
+```{python}
+#| label: libraries
+#| include: true
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import sqlite3
+```
+
+
+## Elevator pitch
+
+Baseball statistics reveal intricate relationships that define the dynamics of the game. 
+By analyzing player data, we uncover patterns in performance and financial rewards that 
+highlight broader trends within the sport. This analysis emphasizes individual achievements
+ while offering insights into team strategies and market behaviors. Through SQL queries and 
+ Plotly Express visualizations, we bring these stories to life, showcasing the hidden connections 
+ that make baseball a fascinating subject for data analysis.
+
+## QUESTION|TASK 1
+
+Write an SQL query to create a new dataframe about baseball players who attended BYU-Idaho. 
+The new table should contain five columns: playerID, schoolID, salary, and the yearID/teamID 
+associated with each salary. Order the table by salary (highest to lowest) and print out the table in your report.
+
+For this task, I successfully created a new dataframe containing the requested five columns. 
+The salary column is ordered correctly from highest to lowest, and the table provides a clear 
+overview of player earnings. From this data, we observe that the highest-paid BYU-Idaho alumnus is lindsma01t, 
+reflecting their standout career performance in baseball.
+
+```{python}
+#| label: Q1
+#| code-summary: Players_who_attended_BYU-Idaho
+Data = 'C:/Users/kmurr/Downloads/lahmansbaseballdb (2).sqlite'
+con = sqlite3.connect(Data)
+q = '''
+  SELECT DISTINCT p.playerID, c.schoolID, s.salary, s.yearID, s.teamID
+  FROM people p
+  LEFT JOIN salaries s ON p.playerID = s.playerID
+  JOIN collegeplaying c ON p.playerID = c.playerID
+  WHERE c.schoolID = 'idbyuid'
+  ORDER BY s.salary DESC;
+'''
+
+results = pd.read_sql_query(q,con)
+
+display(results)
+```
+
+
+## QUESTION|TASK 2
+
+__This three-part question requires you to calculate batting average (number of hits divided by the number of at-bats)__
+
+__A. Write an SQL query that provides playerID, yearID, and batting average for players with at least 1 at bat that year. Sort the table from highest batting average to lowest, and then by playerid alphabetically. Show the top 5 results in your report.__
+
+I generated a table displaying the requested columns for the top five players. 
+The batting averages are ranked in descending order, with ties resolved alphabetically by playerID. 
+This ranking highlights the exceptional seasonal performances of these players.
+
+```{python}
+#| label: Q2-1
+#| code-summary: Batting_average_over_1_at_bat
+
+
+q = ''' SELECT playerid
+,               yearid
+,               (H*1.0/AB) AS batting_average
+        FROM batting
+        WHERE ab >= 1
+        ORDER BY batting_average desc
+,               playerid ASC
+        LIMIT 5;'''
+results = pd.read_sql_query(q,con)
+
+results
+```
+
+<br>
+__B. Use the same query as above, but only include players with at least 10 at bats that year. Print the top 5 results__
+
+This table focuses on players with at least 10 at-bats, narrowing the list to more consistent performers. 
+The top five players demonstrate remarkable hitting accuracy, 
+offering insights into the skills of players with greater participation.
+
+```{python}
+#| label: Q2-2
+#| code-summary: Batting_average_over_10_at_bats
+
+q = ''' SELECT playerid
+,               yearid
+,               (H*1.0/AB) as batting_average
+        FROM batting
+        WHERE ab >= 10
+        ORDER BY batting_average DESC
+,               playerid ASC
+        LIMIT 5; '''
+results = pd.read_sql_query(q,con)
+
+results
+```
+
+<br>
+__C. Now calculate the batting average for players over their entire careers (all years combined). Only include players with at least 100 at bats, and print the top 5 results.__
+
+This task required calculating career-long batting averages, 
+which added complexity by aggregating data across all seasons. 
+The top five results highlight players who sustained exceptional performance over extended periods, 
+providing valuable benchmarks for career achievements.
+
+```{python}
+#| label: Q2-3
+#| code-summary: Batting_average_over_career
+
+q = ''' SELECT playerid
+,               (SUM(h) * 1.0 / SUM(ab)) AS batting_average
+        FROM batting
+        GROUP BY playerid
+        HAVING SUM(ab) >= 100
+        ORDER BY batting_average DESC
+,               playerid ASC
+        LIMIT 5; '''
+results = pd.read_sql_query(q,con)
+
+results
+```
+
+
+## QUESTION|TASK 3
+
+__Pick any two baseball teams and compare them using a metric of your choice (average salary, home runs, number of wins, etc). Write an SQL query to get the data you need, then make a graph using Plotly Express to visualize the comparison. What do you learn?__
+
+I chose to compare the Atlanta Braves and Texas Rangers using their average salaries. 
+After visualizing the data with a bar graph, I observed that the two teams have relatively similar average salaries. 
+This insight reflects the financial strategies of these teams and their efforts to maintain competitive payrolls.
+
+
+```{python}
+#| label: Q3
+#| code-summary: Average_salary_by_team
+# Verify the contents of results DataFrame
+
+import pandas as pd
+import plotly.express as px
+import sqlite3
+
+conn = sqlite3.connect('C:/Users/kmurr/Downloads/lahmansbaseballdb.sqlite')
+
+def execute_query(query, connection):
+    return pd.read_sql_query(query, connection)
+
+q = '''
+SELECT teams.teamid,
+       ROUND(AVG(salaries.salary), 2) AS avg_salary
+FROM teams
+JOIN salaries ON teams.teamid = salaries.teamid
+WHERE teams.teamid IN ('ATL', 'TEX')
+GROUP BY teams.teamid
+ORDER BY avg_salary DESC;
+'''
+
+results = pd.read_sql_query(q, conn)
+
+results
+```
+
+
+```{python}
+
+import plotly.express as px
+
+color_map = {'ATL': '#002F6C', 'TEX': '#000000'}  
+
+fig = px.bar(results, x='teamID', y='avg_salary', title='Average Salary by Team',
+             color='teamID', color_discrete_map=color_map, text='avg_salary')
+
+fig.update_xaxes(title_text='')
+
+fig.update_yaxes(title_text='')
+
+fig.update_traces(texttemplate='%{text:.2s}M', textposition='outside')
+
+# for i, row in results.iterrows():
+#     fig.add_hline(y=row['avg_salary'], line_dash='dot', line_color=color_map[row['teamID']],
+#                   annotation_text=f"${row['avg_salary']}M", annotation_position='top right')
+
+fig.update_layout(showlegend=False)
+fig.update_traces(texttemplate="%{value:.0f}")
+
+fig.show()
+```
+
+## QUESTION|STRETCH 1
+
+__Advanced Salary Distribution by Position (with Case Statement): Write an SQL query that provides a summary table showing the average salary for players in each position (e.g., pitcher, catcher, outfielder) across all years.__
+
+I completed this stretch question to explore salary trends across positions, 
+which was both challenging and rewarding. The resulting table highlights 
+the average salary for each position, the number of players, 
+and salary categories based on thresholds. These insights reveal significant 
+variations in earnings depending on a player’s role, 
+offering a deeper understanding of market valuation in baseball.
+
+```{python}
+#| label: Q4
+#| code-summary: Average_salary_by_position
+
+q = ''' SELECT f.pos
+,               ROUND(AVG(s.salary), 2) AS average_salary
+,               COUNT(DISTINCT s.playerid) AS total_players
+,               COALESCE(MAX(s.salary), 'N/A') AS highest_salary
+,
+                CASE
+                        WHEN AVG(s.salary) > 1000000 THEN 'High Salary'
+                        WHEN AVG(s.salary) BETWEEN 500000 AND 1000000 THEN 'Medium Salary'
+                        ELSE 'Low Salary'
+                END AS salary_category
+        FROM fielding f
+        JOIN salaries s 
+                ON f.playerid = s.playerid AND f.yearid = s.yearid
+        GROUP BY f.pos
+        ORDER BY average_salary DESC
+        LIMIT 10;'''
+results = pd.read_sql_query(q,con)
+
+results
+```
+
+
+## QUESTION|STRETCH 2
+
+__Advanced Career Longevity and Performance (with Subqueries): Calculate the average career length (in years) for players who have played at least one game. Then, identify the top 10 players with the longest careers (based on the number of years they played).__
+
+This stretch question was intriguing because it required calculating career length 
+for each player and ranking them by longevity. The final table displays the top 10 
+players with the longest careers, led by Nick Altrock, who played for the most years. 
+This analysis sheds light on factors contributing to career durability, 
+such as skill, adaptability, and consistency.
+
+```{python}
+#| label: Q5
+#| code-summary: Longest_careers
+
+q = ''' SELECT p.playerID
+,               p.nameFirst AS first_name
+,               p.nameLast AS last_name
+,               career_length
+        FROM (SELECT playerID, (MAX(yearID) - MIN(yearID) + 1) AS career_length
+                FROM appearances
+                GROUP BY playerID) AS career_lengths
+        JOIN people p ON career_lengths.playerID = p.playerID
+        ORDER BY career_length DESC
+        LIMIT 10;'''
+results = pd.read_sql_query(q,con)
+
+results
+```
