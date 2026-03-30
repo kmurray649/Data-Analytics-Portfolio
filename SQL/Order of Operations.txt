@@ -1,0 +1,14 @@
+SQL
+
+SELECT
+FROM
+WHERE
+GROUP BY
+HAVING
+
+Order of operations
+-FROM(joins)
+-WHERE
+-SELECT
+-GROUP BY
+-HAVING
